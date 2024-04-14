@@ -9,7 +9,7 @@ we store everything that's installed in the /klipper/config folder, which is cle
 everything is numbered as follows.
 
 1: kinematics
-2: MMU's and toolchangers
+2: Z axis setups
 3: probes
 4: buckets and wipers
 5: macros
