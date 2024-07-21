@@ -33,6 +33,10 @@ def pull_files(files, path):
 def rename(file, new_name):
     os.rename(file, new_name)
 
+def include_cfg(cfg_name):
+    with open("klipper/printer_data/config/printer.cfg", "a") as file:
+        file.write("\n[include " + cfg_name + ".cfg]")  
+
 #install functions
 def cartesian():
     print("installing cartesian kinematics")
@@ -46,7 +50,8 @@ def cartesian():
 def cartesian_limited():
     print("installing limited cartesian kinematics")
     folder_create("/klipper/config/kinematics")
-    pull_files("kinematics/cartesian_limited.cfg", "config/kinematics")
+    pull_files("https://raw.githubusercontent.com/FyreX-opensource-design/KCMS/main/kinematics/cartesian_limited.cfg", "config/kinematics")
+    pull_files("https://raw.githubusercontent.com/DangerKlippers/danger-klipper/master/klippy/kinematics/limited_cartesian.py", "klippy/kinematics")
     if os.path.exists(printer_config + "/printer.cfg") == False:
         shutil.copy("/klipper/config/kinematics/cartesian_limited.cfg", printer_config)
         os.rename(printer_config + "/cartesian_limited.cfg", printer_config + "/printer.cfg")
@@ -59,9 +64,47 @@ def coreXY2():
 
 def single_Z():
     print("adding single Z to config")
-    with open(printer_config + "/printer.cfg", "a") as file:
-        file.writelines([])
+    include_cfg("single_z")
+    folder_create(config + "kinematics/z_axis")
+    pull_files("", "config/kinematiccs/z_axis")
+    shutil.copy(config + "/kinematics/z_axis/single_z", printer_config)
 
+#Steppers
+
+def create_TMC_file():
+    if os.path.exists(printer_config + "tmc.cfg") == False:
+        with open("tmc.cfg", "w") as file:
+            file.write("# stepper driver config")
+
+def TMC(stepper, driver):
+    if stepper and driver != None:
+        create_TMC_file()
+        with open(printer_config + "/tmc.cfg", "a") as file:
+            file.writelines(["[TMC" + driver + " " + stepper + "]", "cs_pin: #required", "run_current:", "hold_current:", "home_current: #Danger Klipper only", "interpolate: True", "coolstep_threshold: #Danger Klipper only" ,"high_velocity_threshold: #Danger Klipper only","stealthchop_threshold: 120"])
+
+def TMC_autotune():
+    if os.path.exists("~/klipper_tmc_autotune") == False:
+        os.system("wget -O - https://raw.githubusercontent.com/andrewmcgr/klipper_tmc_autotune/main/install.sh | bash")
+        with open(printer_config + "moonraker.conf", "a") as file:
+            file.writelines(["[update_manager klipper_tmc_autotune]","type: git_repo","channel: dev","path: ~/klipper_tmc_autotune","origin: https://github.com/andrewmcgr/klipper_tmc_autotune.git","managed_services: klipper","primary_branch: main","install_script: install.sh]"])
+    else:
+        print("TMC autotune already installed")
+
+def TMC_autotune_def(stepper, motor):
+    if stepper and motor != None:
+        if os.path.exists("~/klipper_tmc_autotune") == True:
+            create_TMC_file()
+            with open(printer_config + "/tmc.cfg", "a") as file:
+                file.writelines(["[autotune_tmc "+ stepper + "]","motor:" + motor])
+
+
+def chopper_resonance_tuner():
+    if os.path.exists("~/chopper-resonance-tuner") == False:
+        os.system("cd ~ && git clone https://github.com/MRX8024/chopper-resonance-tuner && bash ~/chopper-resonance-tuner/install.sh")
+        with open(printer_config + "moonraker.conf", "a") as file:
+            file.writelines(["[update_manager chopper_resonace_tuner]","type: git_repo","channel: dev","path: ~/chopper-resonace-tuner","origin: https://github.com/MRX8024/chopper-resonance-tuner.git","managed_services: klipper","primary_branch: main","install_script: install.sh]"])
+    else:
+        print("Chopper resonace tuner already installed")
 
 while cmd != "q":
     cmd = input("input number for itemset or q to exit")
@@ -91,3 +134,23 @@ while cmd != "q":
         print("enhanced coreXY, varient of hybrid coreXY")
     elif cmd == "17":
         print("dualing gantry")
+    elif cmd == "21":
+        print("single Z motor")
+    elif cmd == "411":
+        print("TMC cfg")
+        install(TMC(None, None))
+        stepper = input("input stepper name")
+        driver = input("input driver name")
+        TMC(stepper, driver)
+    elif cmd == "412":
+        print("TMC autotune motor def")
+        install(TMC_autotune_def(None, None))
+        stepper = input("input stepper name")
+        motor = input("input motor model")
+        TMC_autotune_def(stepper, motor)
+    elif cmd == "51":
+        print("TMC autotune")
+        install(TMC_autotune())
+    elif cmd == "52":
+        print("chopper resonace tuner")
+        install(chopper_resonance_tuner())
